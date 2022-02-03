@@ -87,6 +87,25 @@ const client = new Client({
 //    return;
 //  }
 // });
+
+client.once("ready", async () => {
+    const data = [{
+        name: "ping",
+        description: "Replies with Pong!",
+    }];
+    await client.application.commands.set(data, process.env.DISCORD_GUILD_ID);
+    console.log("Ready!");
+});
+
+client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isCommand()) {
+        return;
+    }
+    if (interaction.commandName === 'ping') {
+        await interaction.reply('Pong！');
+    }
+});
+
 client.on('ready', message => {
   console.log('Already...');
   client.ws.on('INTERACTION_CREATE', async interaction => {
@@ -214,7 +233,8 @@ fastify.get("/get", function(request, reply) {
 
 
 // Run the server and report out to the logs
-fastify.listen(process.env.PORT, '0.0.0.0', function(err, address) {
+const PORT = process.env.PORT ?? 3000
+fastify.listen(PORT, '0.0.0.0', function(err, address) {
   if (err) {
     fastify.log.error(err);
     process.exit(1);
