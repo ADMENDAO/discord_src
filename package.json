@@ -1,0 +1,43 @@
+{
+  "name": "discord",
+  "version": "1.0.0",
+  "description": "Stores the sources used in discord (GAS/BOT/etc)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "watch": "./node_modules/.bin/supervisor -i public,node_modules -e node,js,scss,json server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ADMENDAO/discord_src.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ADMENDAO/discord_src/issues"
+  },
+  "homepage": "https://github.com/ADMENDAO/discord_src#readme",
+  "dependencies": {
+    "colors": "^1.4.0",
+    "connect-flash": "^0.1.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "discord.js": "^13.6.0",
+    "fastify": "^3.27.0",
+    "fastify-formbody": "^5.2.0",
+    "fastify-static": "^4.5.0",
+    "handlebars": "^4.7.7",
+    "install": "^0.13.0",
+    "point-of-view": "^5.0.0",
+    "supervisor": "^0.12.0",
+    "tracer": "^1.1.5"
+  },
+  "devDependencies": {
+    "dotenv": "^14.3.2",
+    "fibers": "^5.0.0",
+    "sass": "^1.39.0",
+    "sass-loader": "^12.1.0",
+    "style-loader": "^3.2.1"
+  }
+}
