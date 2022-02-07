@@ -39,7 +39,8 @@
     "sass": "^1.49.7",
     "sass-loader": "^12.4.0",
     "style-loader": "^3.3.1",
-    "colors": "^1.4.2"
+    "google-spreadsheet": "^3.2.0",
+    "dayjs": "^1.10.7"
   },
   "devDependencies": {
     "dotenv": "^14.3.2",
