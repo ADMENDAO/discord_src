@@ -53,7 +53,7 @@ fastify.register(require("point-of-view"), {
 //   seo.url = `https://${process.env.PROJECT_DOMAIN}.glitch.me`;
 // }
 
-const { Client, Constants, Intents, TextChannel } = require("discord.js");
+const { Client, Constants, Intents, TextChannel, MessageActionRow, MessageSelectMenu } = require("discord.js");
 
 const client = new Client({
   intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
@@ -78,123 +78,253 @@ const creds = require("./"+process.env.CREDENCIAL_FILE_PATH); // the file saved 
 const wl_header = {col1:'id',col2:'username',col3:'discriminator',col4:'address',col5:'pj',col6:'createdTime'};
 
 client.on("messageCreate", async (message) => {
+  try {
+    if(message.guild.id == process.env.DISCORD_GUILD_ID){
+      let congrats = /Congratulations/
+      let giveaway = /giveaway for the/
 
-  let congrats = /Congratulations/
-  let giveaway = /giveaway for the/
-  
-    //抽選結果発表時
-    if(congrats.test(message.content) && message.author.bot ){
-      let winner_regexp = /<@(.*?)>/g;
-      let pj_regexp = /You won the \*\*(.*)\*\*!$/;
-      let winner = message.content.match(winner_regexp);
-      let pj_name = message.content.match(pj_regexp);
-      logger.debug(message.content)
-      logger.debug(winner)
-      logger.debug(pj_name[1])
-      let sheet_id = null
-      Object.keys(doc._rawSheets).forEach(async function (key) {
-        //logger.debug(doc._rawSheets[key])
-        sheet_id = doc._rawSheets[key]._rawProperties.title == pj_name[1] ? key : null
-      })
-      logger.debug(sheet_id)
-      if(sheet_id !== null){
-        let work_sheet = doc.sheetsById[sheet_id];
-        let rows = await work_sheet.getRows();
-        logger.debug(rows)
-        let result = await work_sheet.addRow(winner)
-        logger.debug(result)
+        //抽選結果発表時
+        if(congrats.test(message.content) && message.author.bot ){
+          let winner_regexp = /<@(.*?)>/g;
+          let pj_regexp = /You won the \*\*(.*)\*\*!$/;
+          let winner = message.content.match(winner_regexp);
+          let pj_name = message.content.match(pj_regexp);
+          logger.debug(message.content)
+          logger.debug(winner)
+          logger.debug(pj_name[1])
+          let sheet_id = null
+          Object.keys(doc._rawSheets).forEach(async function (key) {
+            //logger.debug(doc._rawSheets[key])
+            sheet_id = doc._rawSheets[key]._rawProperties.title == pj_name[1] ? key : null
+          })
+          logger.debug(sheet_id)
+          if(sheet_id !== null){
+            let work_sheet = doc.sheetsById[sheet_id];
+            let rows = await work_sheet.getRows();
+            logger.debug(rows)
+            let result = await work_sheet.addRow(winner)
+            logger.debug(result)
+          }
+
+        //ギブアウェイ設定時
+        }else if(giveaway.test(message.content) && message.author.bot ){
+          //console.log(regexp.test(message.content));
+
+          let pj_regexp = /🎉 Done! The giveaway for the `(.*)` is starting in /;
+          let pj_name = message.content.match(pj_regexp);
+          //logger.debug(pj_name[1]) 1にマッチしたPJ名
+          if(pj_name[1] !== ''){
+            let sheet_titles = []
+            Object.keys(doc._rawSheets).forEach(async function (key) {
+              //console.log(key + "/" + doc._rawSheets[key]._rawProperties.title);
+              //logger.debug(pj_name[1] , doc._rawSheets[key]._rawProperties.title)
+              sheet_titles.push(doc._rawSheets[key]._rawProperties.title)
+            })
+            if (!sheet_titles.includes(pj_name[1])) {
+              const newSheet = await doc.addSheet();
+              await newSheet.updateProperties({ title: pj_name[1], index:0 });
+              logger.debug(newSheet)
+              const row = await newSheet.setHeaderRow(wl_header);
+              await row.save();
+            }
+          }
+        //コマンド実行時
+        }else if(message.content.startsWith('whitelist_add') && !message.author.bot ){
+        //logger.debug('messageCreate', message)
+        const sheet = doc.sheetsByIndex[0]; // the first sheet
+        const rows = await sheet.getRows();
+
+        //logger.debug(message.author.id)
+        message.content = message.content.replace(/　/g," ")
+        let words = message.content.split(' ')
+        //logger.debug(words)
+        //logger.debug('words[3]', words[3] == 'undefined')
+
+        let daytime = dayjs(message.createdTimestamp, 'YYYY/MM/DD HH:MM:SS').tz('Asia/Tokyo').format()
+        //logger.debug(daytime)
+        const sundar = await sheet.addRow({id: message.author.id,
+                                           username: message.author.username,
+                                           discriminator:message.author.discriminator,
+                                           address: words[1],
+                                           pj: words[2],
+                                           createdTime: daytime
+                                          });
+          logger.debug(sundar)
+        }else if(message.content.startsWith('!winner') && !message.author.bot ){
+  //       let filter = m => m.author.id === message.author.id
+  //       message.channel.awaitMessages(filter, { max: 1, time: 30000, errors: ['time'] }) 
+  //       .then(collected => {
+  //           if (collected.first()=="Explore a Pond") { logger.log('pond')
+  //                                                     collected.reply('pond')} 
+  //           else if (collected.first()=="Explore a Tree") {  logger.log('Tree')
+  //                                                          collected.reply('Tree') } 
+  //           else if (collected.first()=="Follow a Trail") {  logger.log('Trail')
+  //                                                          collected.reply('Trail') } 
+  //           else { message.channel.send("Could not find this answer"); return }
+  //       })
+
+  //       .catch(collected => {
+  //           message.channel.send('Timeout');
+  //       });
+          const row = new MessageActionRow()
+          .addComponents(
+            new MessageSelectMenu()
+              .setCustomId('select')
+              .setPlaceholder('Nothing selected')
+              .addOptions([
+                {
+                  label: 'Select me',
+                  description: 'This is a description',
+                  value: 'first_option',
+                },
+                {
+                  label: 'You can select me too',
+                  description: 'This is also a description',
+                  value: 'second_option',
+                },
+              ]),
+          );
+
+          await message.reply({ content: 'Reacting!', components: [row], fetchReply: true })
+          .then(async (select)=>{
+            if (!select.isSelectMenu()) return;
+
+            if (select.customId === 'select') {
+              await select.update({ content: 'Something was selected!', components: [] });
+            }
+          })
+          .catch(collected => {
+                message.reply('Timeout');
+          });
+
       }
-      
-    //ギブアウェイ設定時
-    }else if(giveaway.test(message.content) && message.author.bot ){
-      //console.log(regexp.test(message.content));
-    
-      let pj_regexp = /🎉 Done! The giveaway for the `(.*)` is starting in /;
-      let pj_name = message.content.match(pj_regexp);
-      //logger.debug(pj_name[1]) 1にマッチしたPJ名
-      if(pj_name[1] !== ''){
-        let sheet_titles = []
-        Object.keys(doc._rawSheets).forEach(async function (key) {
-          //console.log(key + "/" + doc._rawSheets[key]._rawProperties.title);
-          //logger.debug(pj_name[1] , doc._rawSheets[key]._rawProperties.title)
-          sheet_titles.push(doc._rawSheets[key]._rawProperties.title)
-        })
-        if (sheet_titles.includes(pj_name[1])) {
-          //logger.debug('すでに同名のシートあり')
-          return;
-        }else{
-          const newSheet = await doc.addSheet();
-          await newSheet.updateProperties({ title: pj_name[1], index:0 });
-          logger.debug(newSheet)
-          const row = await newSheet.setHeaderRow(wl_header);
-          await row.save();
-        }
-      }
-    //コマンド実行時
-    }else if(message.content.startsWith('whitelist_add') && !message.author.bot ){
-    //logger.debug('messageCreate', message)
-    const sheet = doc.sheetsByIndex[0]; // the first sheet
-    const rows = await sheet.getRows();
-    
-    //logger.debug(message.author.id)
-    message.content = message.content.replace(/　/g," ")
-    let words = message.content.split(' ')
-    //logger.debug(words)
-    //logger.debug('words[3]', words[3] == 'undefined')
-    
-    let daytime = dayjs(message.createdTimestamp, 'YYYY/MM/DD HH:MM:SS').tz('Asia/Tokyo').format()
-    //logger.debug(daytime)
-    const sundar = await sheet.addRow({id: message.author.id,
-                                       username: message.author.username,
-                                       discriminator:message.author.discriminator,
-                                       address: words[1],
-                                       pj: words[2],
-                                       createdTime: daytime
-                                      });
-    logger.debug(sundar)
-  }else{
-    return
+      // else{
+      //   return
+      // }
+    }
+  }catch(error) {
+    logger.debug(error)
   }
-});
+})
 
 //当選者がコマンド実行してアドレスを提出する際の対話
-client.on("interactionCreate", async (message) => {
-    logger.debug(message)
-    if (!message.isCommand()) {
-        return;
-    }
-    if (message.commandName === 'winner') {
-      let filter = m => m.author.id === message.author.id
-      message.reply({ content: '・・・・・・・・・・。kek!', ephemeral: true }).then(async () => {
-        //logger.log('whitelist_add');
-        //logger.debug(doc.title);
-//         await doc.updateProperties({ title: 'renamed doc' });
+client.on("interactionCreate", async (interaction) => {
+  try{
+    if(interaction.guild.id == process.env.DISCORD_GUILD_ID){
 
-//         const sheet = doc.sheetsByIndex[0]; // or use doc.sheetsById[id] or doc.sheetsByTitle[title]
-//         console.log(sheet.title);
-//         console.log(sheet.rowCount);
+      if (!interaction.isCommand()) {
+          return;
+      }
+      if (interaction.commandName === 'winner') {
+        const row = new MessageActionRow()
+        .addComponents(
+          new MessageSelectMenu()
+            .setCustomId('select')
+            .setPlaceholder('Nothing selected')
+            .addOptions([
+              {
+                label: 'Select me',
+                description: 'This is a description',
+                value: 'first_option',
+              },
+              {
+                label: 'You can select me too',
+                description: 'This is also a description',
+                value: 'second_option',
+              },
+            ]),
+        );
 
-//         // adding / removing sheets
-//         const newSheet = await doc.addSheet({ title: 'hot new sheet!' });
-//         await newSheet.delete();
-      //message.channel.send(`Are you sure to delete all data? \`YES\` / \`NO\``).then(() => {
-        message.channel.awaitMessages(filter, {
-            max: 1,
-            time: 30000,
-            errors: ['time']
-          })
-          .then(async message => {
-            message = message.first()
-            
-          })
-          .catch(error => {
-              message.channel.send('Timeout');
-          });
-      })
-    }else{
-      return
-    }
-});
+        await interaction.reply({ content: 'Reacting!', components: [row], fetchReply: true })
+        .then(async (select)=>{
+          if (!select.isSelectMenu()) return;
+
+          if (select.customId === 'select') {
+            await select.update({ content: 'Something was selected!', components: [] });
+          }
+        })
+        .catch(collected => {
+              interaction.reply('Timeout');
+        });
+          
+        
+      };
+
+      
+//         message.channel.awaitMessages(m => m.author.id == message.author.id,
+//             {max: 1, time: 3000}).then(collected => {
+//                     // only accept messages by the user who sent the command
+//                     // accept only 1 message, and return the promise after 30000ms = 30s
+//                     logger.debug(collected.first().content)
+//                     // first (and, in this case, only) message of the collection
+//                     if (collected.first().content.toLowerCase() == 'yes') {
+//                             message.reply('Shutting down...');
+//                             client.destroy();
+//                     }
+
+//                     else
+//                             message.reply('Operation canceled.');      
+//             }).catch(() => {
+//                     message.reply('No answer after 30 seconds, operation canceled.');
+//             });
+//         message.reply({
+//     "content": "Mason is looking for new arena partners. What classes do you play?",
+//     "components": [
+//         {
+//             "type": 1,
+//             "components": [
+//                 {
+//                     "type": 3,
+//                     "custom_id": "class_select_1",
+//                     "options":[
+//                         {
+//                             "label": "Rogue",
+//                             "value": "rogue",
+//                             "description": "Sneak n stab",
+//                             "emoji": {
+//                                 "name": "rogue",
+//                                 "id": "625891304148303894"
+//                             }
+//                         },
+//                         {
+//                             "label": "Mage",
+//                             "value": "mage",
+//                             "description": "Turn 'em into a sheep",
+//                             "emoji": {
+//                                 "name": "mage",
+//                                 "id": "625891304081063986"
+//                             }
+//                         },
+//                         {
+//                             "label": "Priest",
+//                             "value": "priest",
+//                             "description": "You get heals when I'm done doing damage",
+//                             "emoji": {
+//                                 "name": "priest",
+//                                 "id": "625891303795982337"
+//                             }
+//                         }
+//                     ],
+//                     "placeholder": "Choose a class",
+//                     "min_values": 1,
+//                     "max_values": 3
+//                 }
+//             ]
+//         }
+//     ]
+// ,ephemeral: true}).then(async () => {
+          
+          
+        //})
+      }
+      // else{
+      //   return
+      // }
+  }catch(error){
+    logger.debug(error)
+  }
+    
+})
 
 
 client.login(process.env.DISCORD_BOT_TOKEN).catch(console.error);
