@@ -1,0 +1,22 @@
+const GLITCH_URL = "http://******************.glitch.me/
+function doRetain() {
+  var json = {
+    'userid':'',
+    'channelid':'',
+    'message':'',
+    'client':'gas',
+  };
+  sendGlitch(GLITCH_URL, json);
+}
+
+function sendGlitch(uri, json) {
+  var params = {
+    'contentType' : 'application/json; charset=utf-8',
+    'method' : 'post',
+    'payload' : json,
+    'headers' : json,
+    'muteHttpExceptions': true
+  };
+
+  response = UrlFetchApp.fetch(uri, params);
+}
