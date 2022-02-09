@@ -198,7 +198,7 @@ client.on("messageCreate", async (message) => {
           //     ]),
           //   )
           await message.reply({
-            content: "おめでとさん",
+            content: "おん",
             components: [new MessageActionRow().addComponents(button)],
             fetchReply: true,
             ephemeral: true
@@ -228,7 +228,7 @@ client.on("messageCreate", async (message) => {
 //当選者がコマンド実行してアドレスを提出する際の対話
 client.on("interactionCreate", async (interaction) => {
   try{
-      logger.debug(interaction)        
+    //logger.debug(interaction)        
     if(interaction.guild.id == process.env.DISCORD_GUILD_ID){
 
       
