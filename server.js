@@ -53,7 +53,7 @@ fastify.register(require("point-of-view"), {
 //   seo.url = `https://${process.env.PROJECT_DOMAIN}.glitch.me`;
 // }
 
-const { Client, Constants, Intents, TextChannel, MessageActionRow, MessageSelectMenu } = require("discord.js");
+const { Client, Constants, Intents, TextChannel, MessageActionRow, MessageSelectMenu, MessageButton } = require("discord.js");
 
 const client = new Client({
   intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
@@ -163,36 +163,56 @@ client.on("messageCreate", async (message) => {
   //       .catch(collected => {
   //           message.channel.send('Timeout');
   //       });
-          const row = new MessageActionRow()
-          .addComponents(
-            new MessageSelectMenu()
-              .setCustomId('select')
-              .setPlaceholder('Nothing selected')
-              .addOptions([
-                {
-                  label: 'Select me',
-                  description: 'This is a description',
-                  value: 'first_option',
-                },
-                {
-                  label: 'You can select me too',
-                  description: 'This is also a description',
-                  value: 'second_option',
-                },
-              ]),
-          );
-
-          await message.reply({ content: 'Reacting!', components: [row], fetchReply: true })
-          .then(async (select)=>{
-            if (!select.isSelectMenu()) return;
-
-            if (select.customId === 'select') {
-              await select.update({ content: 'Something was selected!', components: [] });
-            }
+          const button = [
+            new MessageButton()
+              .setCustomId("winner_id1")
+              .setStyle("PRIMARY")
+              .setLabel("お前はこれやろ"),
+            
+            new MessageButton()
+              .setCustomId("winner_id2")
+              .setStyle("SECONDARY")
+              .setLabel("これでいいのか？"),
+            
+            new MessageButton()
+              .setCustomId("winner_id3")
+              .setStyle("SUCCESS")
+              .setLabel("これはハズレ")
+          ]
+          // const row = new MessageActionRow()
+          // .addComponents(
+          //   new MessageSelectMenu()
+          //     .setCustomId('select')
+          //     .setPlaceholder('Nothing selected')
+          //     .addOptions([
+          //       {
+          //         label: 'Select me',
+          //         description: 'This is a description',
+          //         value: 'first_option',
+          //       },
+          //       {
+          //         label: 'You can select me too',
+          //         description: 'This is also a description',
+          //         value: 'second_option',
+          //       },
+          //     ]),
+          //   )
+          await message.channel.send({
+            content: "はいよ",
+            components: [new MessageActionRow().addComponents(button)],
+            fetchReply: true 
           })
-          .catch(collected => {
-                message.reply('Timeout');
-          });
+//           .then(async (select)=>{
+//             logger.debug(select)
+//             if (!select.isSelectMenu()) return;
+
+//             if (select.customId === 'select') {
+//               await select.update({ content: 'Something was selected!', components: [] });
+//             }
+//           })
+//           .catch(collected => {
+//                 message.reply('Timeout');
+//           });
 
       }
       // else{
@@ -207,46 +227,31 @@ client.on("messageCreate", async (message) => {
 //当選者がコマンド実行してアドレスを提出する際の対話
 client.on("interactionCreate", async (interaction) => {
   try{
+      logger.debug(interaction)        
     if(interaction.guild.id == process.env.DISCORD_GUILD_ID){
 
+      
+      if (interaction.isSelectMenu()) {
+        if (interaction.customId.startsWith('winner_')) {
+          await interaction.reply({
+            content: 'ハズレ乙',
+            fetchReply: true
+          });
+        }       
+      }
+      
+      if (interaction.isButton()) {
+        if (interaction.customId.startsWith('winner_')) {
+          await interaction.reply({
+            content: 'ハズレ乙',
+            fetchReply: true
+          });
+        }       
+      }
+      
       if (!interaction.isCommand()) {
           return;
       }
-      if (interaction.commandName === 'winner') {
-        const row = new MessageActionRow()
-        .addComponents(
-          new MessageSelectMenu()
-            .setCustomId('select')
-            .setPlaceholder('Nothing selected')
-            .addOptions([
-              {
-                label: 'Select me',
-                description: 'This is a description',
-                value: 'first_option',
-              },
-              {
-                label: 'You can select me too',
-                description: 'This is also a description',
-                value: 'second_option',
-              },
-            ]),
-        );
-
-        await interaction.reply({ content: 'Reacting!', components: [row], fetchReply: true })
-        .then(async (select)=>{
-          if (!select.isSelectMenu()) return;
-
-          if (select.customId === 'select') {
-            await select.update({ content: 'Something was selected!', components: [] });
-          }
-        })
-        .catch(collected => {
-              interaction.reply('Timeout');
-        });
-          
-        
-      };
-
       
 //         message.channel.awaitMessages(m => m.author.id == message.author.id,
 //             {max: 1, time: 3000}).then(collected => {
