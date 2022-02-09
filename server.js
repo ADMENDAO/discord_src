@@ -197,10 +197,11 @@ client.on("messageCreate", async (message) => {
           //       },
           //     ]),
           //   )
-          await message.channel.send({
-            content: "はいよ",
+          await message.reply({
+            content: "おめでとさん",
             components: [new MessageActionRow().addComponents(button)],
-            fetchReply: true 
+            fetchReply: true,
+            ephemeral: true
           })
 //           .then(async (select)=>{
 //             logger.debug(select)
@@ -235,7 +236,8 @@ client.on("interactionCreate", async (interaction) => {
         if (interaction.customId.startsWith('winner_')) {
           await interaction.reply({
             content: 'ハズレ乙',
-            fetchReply: true
+            fetchReply: true,
+            ephemeral: true
           });
         }       
       }
@@ -244,7 +246,8 @@ client.on("interactionCreate", async (interaction) => {
         if (interaction.customId.startsWith('winner_')) {
           await interaction.reply({
             content: 'ハズレ乙',
-            fetchReply: true
+            fetchReply: true,
+            ephemeral: true
           });
         }       
       }
