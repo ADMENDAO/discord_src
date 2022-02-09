@@ -92,16 +92,13 @@ client.on("messageCreate", async (message) => {
           logger.debug(message.content)
           logger.debug(winner)
           logger.debug(pj_name[1])
-          let sheet_id = null
-          Object.keys(doc._rawSheets).forEach(async function (key) {
-            //logger.debug(doc._rawSheets[key])
-            sheet_id = doc._rawSheets[key]._rawProperties.title == pj_name[1] ? key : null
+          let sheet_id = await Object.keys(doc._rawSheets).filter(function (key) {
+            return doc._rawSheets[key]._rawProperties.title == pj_name[1]
           })
           logger.debug(sheet_id)
           if(sheet_id !== null){
             let work_sheet = doc.sheetsById[sheet_id];
             let rows = await work_sheet.getRows();
-            logger.debug(rows)
             let result = await work_sheet.addRow(winner)
             logger.debug(result)
           }
