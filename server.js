@@ -13,6 +13,8 @@ const timezone = require('dayjs/plugin/timezone')
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
+const { setTimeout } = require('timers/promises');
+
 const sassMiddleware = require("sass");
 const logger = require("./src/plugins/logger");
 const { GoogleSpreadsheet } = require('google-spreadsheet');
@@ -53,7 +55,7 @@ fastify.register(require("point-of-view"), {
 //   seo.url = `https://${process.env.PROJECT_DOMAIN}.glitch.me`;
 // }
 
-const { Client, Constants, Intents, TextChannel, MessageActionRow, MessageSelectMenu, MessageButton } = require("discord.js");
+const { Client, Constants, Intents, TextChannel, MessageCollector, MessageActionRow, MessageSelectMenu, MessageButton, MessageEmbed } = require("discord.js");
 
 const client = new Client({
   intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
@@ -71,75 +73,161 @@ client.once("ready", async () => {
 //スプレッドシートの設定＆初期化
 const doc = new GoogleSpreadsheet(process.env.SPREADSHEET_ID);
 const creds = require("./"+process.env.CREDENCIAL_FILE_PATH); // the file saved above
-(async function() {
+async function gs_init() {
   await doc.useServiceAccountAuth(creds);
   await doc.loadInfo();
-}());
-const wl_header = {col1:'id',col2:'username',col3:'discriminator',col4:'address',col5:'pj',col6:'createdTime'};
+  return true
+};
+
+async function sheet_titles_gets(){
+  let sheet_titles = []
+  await gs_init().then(()=>{
+    Object.keys(doc._rawSheets).forEach(async function (key) {
+      //logger.debug(doc._rawSheets[key]._rawProperties.title)
+      sheet_titles.push(doc._rawSheets[key]._rawProperties.title)
+    })
+  })
+  logger.debug(sheet_titles)
+  return sheet_titles
+}
+//シート一覧がキャッシュで更新されていない
+async function insert_sheet(pj_name){
+  let wl_header = {col1:'id',col2:'tagname', col3:'address',col4:'createdTime'};
+  logger.debug(pj_name)
+  let sheet_titles = await sheet_titles_gets()
+  logger.debug(sheet_titles,!sheet_titles.includes(pj_name))
+  if (!sheet_titles.includes(pj_name)) {
+    let newSheet = await doc.addSheet({headerValues:wl_header});
+    await newSheet.updateProperties({ title: pj_name, index:0 });
+    // let row = await newSheet.setHeaderRow(wl_header);
+    // let result = await row.save();
+    return true
+  }else{
+    return false
+  }
+}
+
+//シート名からIDを取得
+async function get_sheet_id_from_name(sheet_name){
+  return await gs_init().then(async ()=>{
+    return await Object.keys(doc._rawSheets).filter((key) => {
+      return doc._rawSheets[key]._rawProperties.title == sheet_name
+    })
+  }).then((sheet_id)=>{
+    if(sheet_id.length > 0){
+      //logger.debug(sheet_id[0])
+      return sheet_id[0]
+    }else{
+      return false
+    }
+  })
+}
 
 client.on("messageCreate", async (message) => {
   try {
     if(message.guild.id == process.env.DISCORD_GUILD_ID){
       let congrats = /Congratulations/
       let giveaway = /giveaway for the/
+      let giveaway2 = /!gstart /
 
         //抽選結果発表時
         if(congrats.test(message.content) && message.author.bot ){
+          
+          //logger.log(sheet_titles_gets())
+          
           let winner_regexp = /<@(.*?)>/g;
           let pj_regexp = /You won the \*\*(.*)\*\*!$/;
-          let winner = message.content.match(winner_regexp);
-          let pj_name = message.content.match(pj_regexp);
-          logger.debug(message.content)
-          logger.debug(winner)
-          logger.debug(pj_name[1])
-          let sheet_id = await Object.keys(doc._rawSheets).filter(function (key) {
-            return doc._rawSheets[key]._rawProperties.title == pj_name[1]
+          let winner = message.content.match(winner_regexp)
+          winner = winner.map(id=>{
+            logger.log(id.replace('<@','').replace('>',''))
+            return id.replace('<@','').replace('>','')
           })
-          logger.debug(sheet_id)
-          if(sheet_id !== null){
-            let work_sheet = doc.sheetsById[sheet_id];
-            let rows = await work_sheet.getRows();
-            let result = await work_sheet.addRow(winner)
-            logger.debug(result)
+          let pj_name = (async function() {
+            let words = message.content.match(pj_regexp)
+            logger.debug(message.content)
+            logger.debug(winner)
+            logger.debug(words)
+            logger.debug(words.slice(-1)[0])
+            words = words.slice(-1)[0]
+            //万が一PJ名にスペースが含まれていたらそれ以降のみをPJ名とする
+            let empty_space = /\s+/
+            if(empty_space.test(words)){
+              words = words.replace(/　/g,empty_space)
+              words = words.split(' ')
+              words = words.slice(-1)[0]
+            }
+            logger.debug(words)
+            return words;
+          }());
+          let sheet_id = await pj_name.then(async (pj)=>{
+            let id = await get_sheet_id_from_name(pj)
+            return id
+          })
+          // logger.debug(sheet_id)
+          // logger.debug(winner)
+          //winnerが1以上
+          if(winner.length){
+            let insert_data = winner.map(user_id=>{
+              let user = client.users.cache.get(user_id);
+              if (user) {
+                logger.debug(user)
+                return [user_id, user.tag] 
+              } else {
+                return [user_id, 'error:unknown_name']
+              };
+            })
+            logger.log(insert_data)
+            //insert_data = [['7**********8','a*****#****'],['1**********6','a*******#5***']]
+            if(sheet_id !== null){
+              let work_sheet = doc.sheetsById[sheet_id];
+              let rows = await work_sheet.getRows();
+              let result = await work_sheet.addRows(insert_data,{row:false, insert:true})
+              logger.debug("データが挿入されました")
+            }
           }
 
-        //ギブアウェイ設定時
-        }else if(giveaway.test(message.content) && message.author.bot ){
-          //console.log(regexp.test(message.content));
+        //!gstartでギブアウェイ設定時(ワークシート作成)
+        }else if(message.content.startsWith('!gstart') && !message.author.bot){
+          let sheet_titles = await sheet_titles_gets()
+          //logger.debug(sheet_titles);
+          let words = message.content.split(' ')
+          logger.debug(words.slice(-1)[0])
+          let pj_name = words.slice(-1)[0]
+          if(words.length > 3 == pj_name !== ''){
+            insert_sheet(pj_name)
+          }
+        //!gcreateでギブアウェイ設定時(ワークシート作成)
+        }else if(giveaway.test(message.content) && message.author.bot){
+          logger.debug('messageCreate', message.content)
 
-          let pj_regexp = /🎉 Done! The giveaway for the `(.*)` is starting in /;
-          let pj_name = message.content.match(pj_regexp);
-          //logger.debug(pj_name[1]) 1にマッチしたPJ名
+          //logger.debug(message.author.id)
+          message.content = message.content.replace(/　/g,"\s+")
+          let pj_regexp = /`(.*)`/;
+          let pj_name = message.content.match(pj_regexp)
+          logger.debug(pj_name[1])
+          pj_name[1].replace('`','')
+          logger.debug(pj_name[1])
+
+          let daytime = dayjs(message.createdTimestamp, 'YYYY/MM/DD HH:MM:SS').tz('Asia/Tokyo').format()
+          logger.debug(pj_name[1]) //マッチしたPJ名
           if(pj_name[1] !== ''){
-            let sheet_titles = []
-            Object.keys(doc._rawSheets).forEach(async function (key) {
-              //console.log(key + "/" + doc._rawSheets[key]._rawProperties.title);
-              //logger.debug(pj_name[1] , doc._rawSheets[key]._rawProperties.title)
-              sheet_titles.push(doc._rawSheets[key]._rawProperties.title)
-            })
-            if (!sheet_titles.includes(pj_name[1])) {
-              const newSheet = await doc.addSheet();
-              await newSheet.updateProperties({ title: pj_name[1], index:0 });
-              logger.debug(newSheet)
-              const row = await newSheet.setHeaderRow(wl_header);
-              await row.save();
-            }
+            insert_sheet(pj_name[1])
           }
         //コマンド実行時
         }else if(message.content.startsWith('whitelist_add') && !message.author.bot ){
-        //logger.debug('messageCreate', message)
-        const sheet = doc.sheetsByIndex[0]; // the first sheet
-        const rows = await sheet.getRows();
+          //logger.debug('messageCreate', message)
+          const sheet = doc.sheetsByIndex[0]; // the first sheet
+          const rows = await sheet.getRows();
 
-        //logger.debug(message.author.id)
-        message.content = message.content.replace(/　/g," ")
-        let words = message.content.split(' ')
-        //logger.debug(words)
-        //logger.debug('words[3]', words[3] == 'undefined')
+          //logger.debug(message.author.id)
+          message.content = message.content.replace(/　/g," ")
+          let words = message.content.split(' ')
+          //logger.debug(words)
+          //logger.debug('words[3]', words[3] == 'undefined')
 
-        let daytime = dayjs(message.createdTimestamp, 'YYYY/MM/DD HH:MM:SS').tz('Asia/Tokyo').format()
-        //logger.debug(daytime)
-        const sundar = await sheet.addRow({id: message.author.id,
+          let daytime = dayjs(message.createdTimestamp, 'YYYY/MM/DD HH:MM:SS').tz('Asia/Tokyo').format()
+          //logger.debug(daytime)
+          const sundar = await sheet.addRow({id: message.author.id,
                                            username: message.author.username,
                                            discriminator:message.author.discriminator,
                                            address: words[1],
@@ -147,78 +235,11 @@ client.on("messageCreate", async (message) => {
                                            createdTime: daytime
                                           });
           logger.debug(sundar)
-        }else if(message.content.startsWith('!winner') && !message.author.bot ){
-  //       let filter = m => m.author.id === message.author.id
-  //       message.channel.awaitMessages(filter, { max: 1, time: 30000, errors: ['time'] }) 
-  //       .then(collected => {
-  //           if (collected.first()=="Explore a Pond") { logger.log('pond')
-  //                                                     collected.reply('pond')} 
-  //           else if (collected.first()=="Explore a Tree") {  logger.log('Tree')
-  //                                                          collected.reply('Tree') } 
-  //           else if (collected.first()=="Follow a Trail") {  logger.log('Trail')
-  //                                                          collected.reply('Trail') } 
-  //           else { message.channel.send("Could not find this answer"); return }
-  //       })
-
-  //       .catch(collected => {
-  //           message.channel.send('Timeout');
-  //       });
-          const button = [
-            new MessageButton()
-              .setCustomId("winner_id1")
-              .setStyle("PRIMARY")
-              .setLabel("お前はこれやろ"),
-            
-            new MessageButton()
-              .setCustomId("winner_id2")
-              .setStyle("SECONDARY")
-              .setLabel("これでいいのか？"),
-            
-            new MessageButton()
-              .setCustomId("winner_id3")
-              .setStyle("SUCCESS")
-              .setLabel("これはハズレ")
-          ]
-          // const row = new MessageActionRow()
-          // .addComponents(
-          //   new MessageSelectMenu()
-          //     .setCustomId('select')
-          //     .setPlaceholder('Nothing selected')
-          //     .addOptions([
-          //       {
-          //         label: 'Select me',
-          //         description: 'This is a description',
-          //         value: 'first_option',
-          //       },
-          //       {
-          //         label: 'You can select me too',
-          //         description: 'This is also a description',
-          //         value: 'second_option',
-          //       },
-          //     ]),
-          //   )
-          await message.reply({
-            content: "おん",
-            components: [new MessageActionRow().addComponents(button)],
-            fetchReply: true,
-            ephemeral: true
-          })
-//           .then(async (select)=>{
-//             logger.debug(select)
-//             if (!select.isSelectMenu()) return;
-
-//             if (select.customId === 'select') {
-//               await select.update({ content: 'Something was selected!', components: [] });
-//             }
-//           })
-//           .catch(collected => {
-//                 message.reply('Timeout');
-//           });
 
       }
-      // else{
-      //   return
-      // }
+      else{
+        return
+      }
     }
   }catch(error) {
     logger.debug(error)
@@ -234,103 +255,100 @@ client.on("interactionCreate", async (interaction) => {
       
       if (interaction.isSelectMenu()) {
         if (interaction.customId.startsWith('winner_')) {
-          await interaction.reply({
+          let reply = await interaction.reply({
             content: 'ハズレ乙',
             fetchReply: true,
             ephemeral: true
           });
+          await setTimeout(5000);
+          await reply.delete()
         }       
       }
+      //winner コマンド実行
+      if (interaction.commandName === 'winner') {
+        logger.debug('WINNER')
+        const button = [
+          new MessageButton()
+            .setCustomId("winner_id1")
+            .setStyle("SECONDARY")
+            .setLabel("お前はこれやろ"),
+
+          new MessageButton()
+            .setCustomId("winner_id2")
+            .setStyle("SECONDARY")
+            .setLabel("これでいいのか？"),
+
+          new MessageButton()
+            .setCustomId("winner_id3")
+            .setStyle("SECONDARY")
+            .setLabel("これはハズレ")
+        ]
+        interaction.reply({
+          content: "おん",
+          components: [new MessageActionRow().addComponents(button)],
+          ephemeral: true,
+          time: 2000
+        })
+        // logger.debug('after Button.')
+      }
+      
       
       if (interaction.isButton()) {
+        logger.debug("is Button.")
+        // const msg = interaction
+        // logger.log(msg)
+        // const filter = i => {
+        //   i.deferUpdate();
+        //   return i.user.id === interaction.user.id;
+        // };
+        // interaction.update({
+        //     content: 'ハズレ乙'
+        //   })
+//         interaction.awaitMessageComponent({ filter, componentType: 'SELECT_MENU', time: 60000 })
+//         .then(interaction => interaction.editReply(`You selected ${interaction.values.join(', ')}!`))
+//         .catch(err => console.log(`No interactions were collected.`));
+        
+//         const collector = new MessageCollector(interaction.channel, m => m.author.id === interaction.user.id, {
+//           time: 10000
+//         });
+        const filter = m => m.author.id === interaction.user.id
+        const collector = await interaction.channel.createMessageCollector(filter, {max: 1, time: 10000})
+      	// .then(interaction => interaction.editReply(`You selected ${interaction.values.join(', ')}!`))
+      	// .catch(err => console.log(`No interactions were collected.`));
+      
         if (interaction.customId.startsWith('winner_')) {
-          await interaction.reply({
-            content: 'ハズレ乙',
-            fetchReply: true,
-            ephemeral: true
-          });
-        }       
+          logger.debug(interaction.customId)
+          
+          collector.on('collect', async (message) => {
+            logger.debug(message.content)
+            
+            message.deferUpdate();
+            message.update("correct!");
+            //return message.content
+          })
+          //logger.debug(coll)
+
+          collector.on('end', (collected, reason) => {
+            logger.debug(collected, reason)
+            interaction.update(collected.time)
+          })
+        }
       }
       
       if (!interaction.isCommand()) {
           return;
       }
-      
-//         message.channel.awaitMessages(m => m.author.id == message.author.id,
-//             {max: 1, time: 3000}).then(collected => {
-//                     // only accept messages by the user who sent the command
-//                     // accept only 1 message, and return the promise after 30000ms = 30s
-//                     logger.debug(collected.first().content)
-//                     // first (and, in this case, only) message of the collection
-//                     if (collected.first().content.toLowerCase() == 'yes') {
-//                             message.reply('Shutting down...');
-//                             client.destroy();
-//                     }
-
-//                     else
-//                             message.reply('Operation canceled.');      
-//             }).catch(() => {
-//                     message.reply('No answer after 30 seconds, operation canceled.');
-//             });
-//         message.reply({
-//     "content": "Mason is looking for new arena partners. What classes do you play?",
-//     "components": [
-//         {
-//             "type": 1,
-//             "components": [
-//                 {
-//                     "type": 3,
-//                     "custom_id": "class_select_1",
-//                     "options":[
-//                         {
-//                             "label": "Rogue",
-//                             "value": "rogue",
-//                             "description": "Sneak n stab",
-//                             "emoji": {
-//                                 "name": "rogue",
-//                                 "id": "625891304148303894"
-//                             }
-//                         },
-//                         {
-//                             "label": "Mage",
-//                             "value": "mage",
-//                             "description": "Turn 'em into a sheep",
-//                             "emoji": {
-//                                 "name": "mage",
-//                                 "id": "625891304081063986"
-//                             }
-//                         },
-//                         {
-//                             "label": "Priest",
-//                             "value": "priest",
-//                             "description": "You get heals when I'm done doing damage",
-//                             "emoji": {
-//                                 "name": "priest",
-//                                 "id": "625891303795982337"
-//                             }
-//                         }
-//                     ],
-//                     "placeholder": "Choose a class",
-//                     "min_values": 1,
-//                     "max_values": 3
-//                 }
-//             ]
-//         }
-//     ]
-// ,ephemeral: true}).then(async () => {
-          
-          
-        //})
-      }
-      // else{
-      //   return
-      // }
+    }
   }catch(error){
     logger.debug(error)
   }
     
 })
 
+  
+client.on('error', err => {
+   console.warn(err);
+});
 
 client.login(process.env.DISCORD_BOT_TOKEN).catch(console.error);
 
