@@ -235,8 +235,8 @@ client.on("messageCreate", async (message) => {
           if(pj_name[1] !== ''){
             insert_sheet(pj_name[1])
           }
-        //!wl コマンド実行時にシートに記録
-        }else if(message.content.startsWith('!wl ') && !message.author.bot){
+        //!whitelist コマンド実行時にシートに記録
+        }else if(message.content.startsWith('!whitelist ') && !message.author.bot){
           const user = client.users.cache.get(message.author.id);
           logger.debug(user.tag)
           //スペースを半角スペースに統一
@@ -352,7 +352,7 @@ client.on("interactionCreate", async (interaction) => {
           response = response.split(" ")
           logger.debug(response)
           await i.update({
-            content: "そしたら下のコピペしてアドレス書いて投稿やで\n\n" + "`!wl ここにアドレス "+response[1] + "`\n\n",
+            content: "そしたら下のコピペしてアドレス書いて投稿やで\n\n" + "`!whitelist ここにアドレス "+response[1] + "`\n\n",
             components: [],
             //ephemeral: true
           })
