@@ -278,7 +278,7 @@ client.on("interactionCreate", async (interaction) => {
     //logger.debug(interaction)        
     if(interaction.guild.id == process.env.DISCORD_GUILD_ID){
       //winner コマンド実行
-      if (interaction.commandName === 'winner') {        
+      if (interaction.commandName === 'winner') {
         //user.idを含むシート情報を収集
         let winner_pj =[]
         const user = client.users.cache.get(interaction.user.id);
@@ -302,7 +302,6 @@ client.on("interactionCreate", async (interaction) => {
             }
           })
           
-        //return [sheet._rawProperties, ...rows]
         }))
         //logger.debug(winner_pj)
         
@@ -326,15 +325,20 @@ client.on("interactionCreate", async (interaction) => {
             interaction.reply({
               content: "アドレス申請したいプロジェクトを選択するんや。",
               components: [new MessageActionRow().addComponents(b)],
-              //ephemeral: true,
             })
           })
         // logger.debug('after Button.')
-        }else{
-          interaction.reply({
-          content: "なんも当たってないわ。ランブルとかビンゴは提供者にDMしてや",
-          //ephemeral: true,
-          })
+        }else{  
+          try {
+            await interaction.reply({
+            content: "なんも当たってないわ。ランブルとかビンゴは提供者にDMしてや",
+            })
+            setInterval(async () => {
+              await interaction.deleteReply();
+            }, 8000)
+          }catch(err) {
+             await interaction.deleteReply();
+          }
         }
       }
       //ボタンリアクション エフェメラルメッセージには反応しないので注意
@@ -350,12 +354,18 @@ client.on("interactionCreate", async (interaction) => {
           //await i.update({ content: 'A button was clicked!', components: [] });
           let response = i.customId.replace(/_/gi, ' ')
           response = response.split(" ")
-          logger.debug(response)
-          await i.update({
+          try {
+            await i.update({
             content: "そしたら下のコピペしてアドレス書いて投稿やで\n\n" + "`!whitelist ここにアドレス "+response[1] + "`\n\n",
             components: [],
-            //ephemeral: true
-          })
+            })
+            setInterval(async () => {
+              logger.debug("res")
+              await i.deleteReply();
+            }, 8000)
+          }catch(err) {
+            await i.deleteReply();
+          }
         }
       });
 
