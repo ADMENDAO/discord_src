@@ -345,31 +345,37 @@ client.on("interactionCreate", async (interaction) => {
       const collector = interaction.channel.createMessageComponentCollector({
         componentType: "BUTTON",
         filter: (c) => c.member.id === interaction.member.id,
+        time: 5000,
+        idle: 15000,
         max: 1
       })
       //Handle button click
       collector.on('collect', async i => {
-        //logger.debug(i.user.tag)
+        logger.debug(i.customId)
         if (i.customId.endsWith(i.user.tag)) {
           //await i.update({ content: 'A button was clicked!', components: [] });
           let response = i.customId.replace(/_/gi, ' ')
           response = response.split(" ")
-          try {
+          //try {
             await i.update({
-            content: "そしたら下のコピペしてアドレス書いて投稿やで\n\n" + "`!whitelist ここにアドレス "+response[1] + "`\n\n",
+            content: "そしたら下のコピペしてアドレス書いて送信やで\n\n" + "`!whitelist ここにアドレス "+response[1] + "`\n\n",
             components: [],
             })
-            setInterval(async () => {
-              logger.debug("res")
-              await i.deleteReply();
-            }, 8000)
-          }catch(err) {
-            await i.deleteReply();
-          }
+          //   setInterval(async () => {
+          //     logger.debug("res")
+          //     await collector.stop()
+          //     await i.deleteReply();
+          //   }, 8000)
+          // }catch(err) {
+          //   logger.debug("res error")
+          //   await i.deleteReply();
+          // }
         }
       });
 
-      //collector.on('end', collected => console.log(`Collected ${collected.size} items`));
+      // collector.on('end', collected => {
+      //   collected.stop();   
+      // });
       
       if (!interaction.isCommand()) {
           return;
