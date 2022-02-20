@@ -280,6 +280,7 @@ client.on("interactionCreate", async (interaction) => {
     if(interaction.guild.id == process.env.DISCORD_GUILD_ID){
       //winner コマンド実行
       if (interaction.commandName === 'winner') {
+        interaction.deferReply({ephemeral: true});
         //user.idを含むシート情報を収集
         let winner_pj =[]
         const user = client.users.cache.get(interaction.user.id);
@@ -315,13 +316,13 @@ client.on("interactionCreate", async (interaction) => {
         //logger.debug(winner_pj)
         if(winner_pj.length > 0){
           logger.debug('WINNER')
-          let b = Promise.all(await winner_pj.map((pj, key) => {
-            //logger.debug("id"+key+"_"+pj+"_"+ user.tag)
-            return new MessageButton()
-              .setCustomId("id"+key+"_"+pj+"_"+ user.tag)
-              .setStyle("SECONDARY")
-              .setLabel(pj)
-          }))
+          // let b = Promise.all(await winner_pj.map((pj, key) => {
+          //   //logger.debug("id"+key+"_"+pj+"_"+ user.tag)
+          //   return new MessageButton()
+          //     .setCustomId("id"+key+"_"+pj+"_"+ user.tag)
+          //     .setStyle("SECONDARY")
+          //     .setLabel(pj)
+          // }))
           let your_command = Promise.all(await winner_pj.map((pj, key) => {
               return "`!whitelist ここにアドレス "+pj+"`\n"
           }))
@@ -333,7 +334,7 @@ client.on("interactionCreate", async (interaction) => {
               mas += `下のコピペしてアドレスのところ書いて送信しといてー\n` 
             }
             mas += command_list.join("")
-            interaction.reply({
+            interaction.editReply({
               content:mas,
               ephemeral: true,
             })
