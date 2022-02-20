@@ -274,6 +274,7 @@ client.on("messageCreate", async (message) => {
 
 //当選者がコマンド実行してアドレスを提出する際の対話
 client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isCommand()) return;
   try{
     //logger.debug(interaction)        
     if(interaction.guild.id == process.env.DISCORD_GUILD_ID){
@@ -288,6 +289,7 @@ client.on("interactionCreate", async (interaction) => {
         await doc.useServiceAccountAuth(creds);
         await doc.loadInfo();
         
+        //自身のtagnameが記載されたシート名を取得
         await Promise.all( Object.keys(doc._rawSheets).map(async (key) => {
           let sheet = doc.sheetsById[key]
           await sheet.getRows({limit:50}).then(async (rows)=>{
@@ -320,66 +322,122 @@ client.on("interactionCreate", async (interaction) => {
               .setStyle("SECONDARY")
               .setLabel(pj)
           }))
-          b.then((b)=>{
-            //logger.debug(b)
+          let your_command = Promise.all(await winner_pj.map((pj, key) => {
+              return "`!whitelist ここにアドレス "+pj+"`\n"
+          }))
+          your_command.then(command_list => {
+            let mas = "おめでとう！"
+            if(command_list.length > 1){
+              mas += `${command_list.length}個当たってるわ。\n下のコピペしてアドレスのところ書いて送信しといてー\n1行ずつ送ってな！\n` 
+            }else{
+              mas += `下のコピペしてアドレスのところ書いて送信しといてー\n` 
+            }
+            mas += command_list.join("")
             interaction.reply({
-              content: "アドレス申請したいプロジェクトを選択するんや。",
-              components: [new MessageActionRow().addComponents(b)],
+              content:mas,
+              ephemeral: true,
             })
           })
+//           b.then(async (b)=>{
+            
+//             logger.debug(interaction.user.id,interaction.user.tag)
+//             const filter = (c) => c.member.id === interaction.member.id
+//             interaction.reply({
+//               content: "アドレス申請したいプロジェクトを選択するんや。",
+//               components: [new MessageActionRow().addComponents(b)],
+//               ephemeral: true,
+//               fetchReply: true
+//             })
+//             .then(async (message) => {
+//               //const message = await interaction.fetchReply();
+//               const filter = i => {
+//                 //i.deferUpdate();
+//                 return i.user.id === interaction.user.id;
+//               };
+
+//               // interaction.channel.awaitMessageComponent({
+//               //   componentType: "BUTTON",
+//               //   filter: (c) => c.member.id === interaction.member.id,
+//               //   time: 5000,
+//               //   idle: 15000,
+//               //   max: 2,
+//               //   errors: ['time']
+//               // })
+//               const collector = interaction.channel.createMessageComponentCollector({
+//                 componentType: "BUTTON",
+//                 filter: (c) => c.member.id === interaction.member.id && c.customId.endsWith(c.user.tag),
+//                 time: 5000,
+//                 idle: 15000,
+//                 max: 2,
+//                 errors: ['time']
+//               })
+//               // .then((collected) => {
+//               //   logger.debug('then 1')
+//               //   logger.debug(collected)
+// //                 logger.debug(interaction)
+// //                 const collector = interaction.channel.createMessageComponentCollector({
+// //                   componentType: "BUTTON",
+// //                   filter: (c) => c.member.id === interaction.member.id,
+// //                   time: 5000,
+// //                   idle: 15000,
+// //                   max: 2,
+// //                   errors: ['time']
+// //                 })
+// //                 //Handle button click
+//                 collector.on('collect', async i => {
+//                   logger.debug(i.customId)
+//                     //await i.update({ content: 'A button was clicked!', components: [] });
+//                     let response = i.customId.replace(/_/gi, ' ')
+//                     response = response.split(" ")
+//                     //try {
+//                       logger.debug('then 2')
+//                       await i.update({
+//                       content: "そしたら下のコピペしてアドレス書いて送信やで\n\n" + "`!whitelist ここにアドレス "+response[1] + "`\n\n",
+//                       components: [],
+//                       ephemeral: true
+//                       })
+//                     collector.stop()
+//                     //   setInterval(async () => {
+//                     //     logger.debug("res")
+//                     //     await collector.stop()
+//                     //     await i.deleteReply();
+//                     //   }, 8000)
+//                     // }catch(err) {
+//                     //   logger.debug("res error")
+//                     //   await i.deleteReply();
+//                     // }
+//                 });
+
+//                 collector.on('end', collected => {
+//                   logger.debug(collected)  
+//                 })
+//                 //interaction.followUp(`You selected ${interaction.values.join(', ')}!`)
+//               // })
+//               //.catch(err => console.log(`No interactions were collected.`));
+//               // interaction.channel.awaitMessages({filter, max: 1, time: 6000, errors: ['time']})
+//               // .then(collected => {
+//               //   logger.debug(collected)
+//               //   interaction.followUp({content: `${collected.first().author} got the correct answer!`,
+//               //                         ephemeral: true
+//               //                        });
+//               // })
+//               // .catch(collected => {
+//               //   interaction.followUp({content: 'Looks like nobody got the answer this time.', 
+//               //                         ephemeral: true
+//               //                        });
+//               // })
+//             })
+//           })
         // logger.debug('after Button.')
         }else{  
-          try {
-            await interaction.reply({
-            content: "なんも当たってないわ。ランブルとかビンゴは提供者にDMしてや",
-            })
-            setInterval(async () => {
-              await interaction.deleteReply();
-            }, 8000)
-          }catch(err) {
-             await interaction.deleteReply();
-          }
+          await interaction.reply({
+          content: "なんも当たってないわ。ランブルとかビンゴは提供者にDMしてや",
+          ephemeral: true
+          })
         }
       }
       //ボタンリアクション エフェメラルメッセージには反応しないので注意
-      const collector = interaction.channel.createMessageComponentCollector({
-        componentType: "BUTTON",
-        filter: (c) => c.member.id === interaction.member.id,
-        time: 5000,
-        idle: 15000,
-        max: 1
-      })
-      //Handle button click
-      collector.on('collect', async i => {
-        logger.debug(i.customId)
-        if (i.customId.endsWith(i.user.tag)) {
-          //await i.update({ content: 'A button was clicked!', components: [] });
-          let response = i.customId.replace(/_/gi, ' ')
-          response = response.split(" ")
-          //try {
-            await i.update({
-            content: "そしたら下のコピペしてアドレス書いて送信やで\n\n" + "`!whitelist ここにアドレス "+response[1] + "`\n\n",
-            components: [],
-            })
-          //   setInterval(async () => {
-          //     logger.debug("res")
-          //     await collector.stop()
-          //     await i.deleteReply();
-          //   }, 8000)
-          // }catch(err) {
-          //   logger.debug("res error")
-          //   await i.deleteReply();
-          // }
-        }
-      });
-
-      // collector.on('end', collected => {
-      //   collected.stop();   
-      // });
       
-      if (!interaction.isCommand()) {
-          return;
-      }
     }
   }catch(error){
     logger.debug(error)
