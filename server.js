@@ -280,7 +280,7 @@ client.on("interactionCreate", async (interaction) => {
     if(interaction.guild.id == process.env.DISCORD_GUILD_ID){
       //winner コマンド実行
       if (interaction.commandName === 'winner') {
-        interaction.deferReply();
+        interaction.deferReply({ephemeral: true});
         //user.idを含むシート情報を収集
         let winner_pj =[]
         const user = client.users.cache.get(interaction.user.id);
