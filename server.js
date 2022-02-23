@@ -80,7 +80,8 @@ const creds = require("./"+process.env.CREDENCIAL_FILE_PATH); // the file saved 
 }());
 
 
-async function sheet_titles_get(){
+
+async function get_sheet_titles(){
   doc.resetLocalCache()
   await doc.useServiceAccountAuth(creds);
   await doc.loadInfo();
@@ -96,7 +97,8 @@ async function sheet_titles_get(){
 async function insert_sheet(pj_name){
   let wl_header = {col1:'tagname', col2:'address'};
   logger.debug(pj_name)
-  let sheet_titles = await sheet_titles_get()
+  logger.debug(pj_name.toLowerCase())
+  let sheet_titles = await get_sheet_titles()
   logger.debug(sheet_titles,!sheet_titles.includes(pj_name))
   if (!sheet_titles.includes(pj_name)) {
     await doc.addSheet({title:pj_name, headerValues:wl_header, index:0})
@@ -111,43 +113,58 @@ async function insert_sheet(pj_name){
   }
 }
 
-//セル検索
-async function select(sheet_name, callBack) {
-  const work_sheet = doc.sheetsByTitle[sheet_name];
-  const rows = await work_sheet.getRows(0)
-    const data = []
-    for (const row of rows) {
-      if (callBack(row)) {
-        data.push({tagname: row.tagname})
-      }
+async function get_sheet_id(pj_name){
+  let sheet_titles = await get_sheet_titles()
+  let id = false
+  await sheet_titles.forEach(async title =>{
+    logger.debug(title, title.toLowerCase(), pj_name.toLowerCase())
+    if(title.toLowerCase() == pj_name.toLowerCase()){
+      logger.debug(title)
+      let sheet = await doc.sheetsByTitle[title];
+      logger.debug(sheet.sheetId)
+      id = sheet.sheetId
     }
-  return data
+  })
+  return id
 }
 
-//アドレスインサート
-async function updateById(sheet_name, id, value) {
-  const work_sheet = doc.sheetsByTitle[sheet_name];
-  const rows = await work_sheet.getRows(0);
-  for (const row of rows) {
-    if (row.id == id) {
-      for (const attr in value) {
-        row[attr] = value[attr]
-        await row.save()
-      }
-    }
-  }
-}
+// //セル検索
+// async function select(sheet_name, callBack) {
+//   const work_sheet = doc.sheetsByTitle[sheet_name];
+//   const rows = await work_sheet.getRows(0)
+//     const data = []
+//     for (const row of rows) {
+//       if (callBack(row)) {
+//         data.push({tagname: row.tagname})
+//       }
+//     }
+//   return data
+// }
 
-//削除
-async function deleteById(sheet_name, id) {
-  const work_sheet = doc.sheetsByTitle[sheet_name];
-  const rows = await work_sheet.getRows(0);
-  for (const row of rows) {
-    if (row.id == id) {
-      await row.delete()
-    }
-  }
-}
+// //アドレスインサート
+// async function updateById(sheet_name, id, value) {
+//   const work_sheet = doc.sheetsByTitle[sheet_name];
+//   const rows = await work_sheet.getRows(0);
+//   for (const row of rows) {
+//     if (row.id == id) {
+//       for (const attr in value) {
+//         row[attr] = value[attr]
+//         await row.save()
+//       }
+//     }
+//   }
+// }
+
+// //削除
+// async function deleteById(sheet_name, id) {
+//   const work_sheet = doc.sheetsByTitle[sheet_name];
+//   const rows = await work_sheet.getRows(0);
+//   for (const row of rows) {
+//     if (row.id == id) {
+//       await row.delete()
+//     }
+//   }
+// }
 
 client.on("messageCreate", async (message) => {
   try {
@@ -158,7 +175,6 @@ client.on("messageCreate", async (message) => {
 
         //抽選結果発表時
         if(congrats.test(message.content) && message.author.bot ){
-          //logger.log(sheet_titles_get())
           let winner_regexp = /<@(.*?)>/g;
           let pj_regexp = /You won the \*\*(.*)\*\*!$/;
           //logger.debug('Congratulations <@123>, <@456>, <@789>'.match(winner_regexp))
@@ -183,6 +199,7 @@ client.on("messageCreate", async (message) => {
           
           pj_name.then(async (pj)=>{
             if(winner.length){
+              //winnerのIDからtagnameを抽出してインサートデータ作成
               let insert_data = await Promise.all(winner.map(user_id=>{
                 let user = client.users.cache.get(user_id);
                 if (user) {
@@ -197,7 +214,7 @@ client.on("messageCreate", async (message) => {
                 let work_sheet = doc.sheetsByTitle[pj];
                 let rows = await work_sheet.getRows();
                 let result = await work_sheet.addRows(insert_data,{row:false, insert:true})
-                logger.debug("データが挿入されました")
+                logger.debug("結果発表データが挿入されました")
               }else{
                 logger.debug("シートが見つからない")
               }
@@ -207,8 +224,6 @@ client.on("messageCreate", async (message) => {
 
         //!gstartでギブアウェイ設定時(ワークシート作成)
         }else if(message.content.startsWith('!gstart') && !message.author.bot){
-          let sheet_titles = await sheet_titles_get()
-          //logger.debug(sheet_titles);
           let words = message.content.split(' ')
           logger.debug(words)
           let pj_name = ""
@@ -233,7 +248,7 @@ client.on("messageCreate", async (message) => {
           pj_name[1].replace('`','')
           logger.debug(pj_name[1]) //マッチしたPJ名
           if(pj_name[1] !== ''){
-            insert_sheet(pj_name[1])
+            await insert_sheet(pj_name[1]).catch(e=>{logger.debug(e)})
           }
         //!whitelist コマンド実行時にシートに記録
         }else if(message.content.startsWith('!whitelist ') && !message.author.bot){
@@ -241,26 +256,31 @@ client.on("messageCreate", async (message) => {
           logger.debug(user.tag)
           //スペースを半角スペースに統一
           message.content = message.content.replace(/\s+/g," ")
+          message.content = message.content.replace(/[{}]/g,"")
           let words = message.content.split(' ')
           logger.debug(words)
           let address = words[1]
           let pj_name = words[2]
-          let sheet = await doc.sheetsByTitle[pj_name]
-          logger.log(sheet._rawProperties)
-          // let range = await sheet.loadCells('A1:E10')
-          // //let cells = await sheet.loadCells();
-          // let cell = await sheet.getCell(1, 0)
-          // logger.log(cell)
-          //logger.debug(message.author, address)
-          let rows = await sheet.getRows();
-          for (const row of rows) {
-          logger.debug(row.tagname)
-            if (row.tagname == user.tag) {
-              row.address = address
-              await row.save()
-              logger.debug("更新完了")
-              break
+          logger.debug("ABCDEFG".toLowerCase())
+          
+          let sheet_id = await get_sheet_id(pj_name)
+          logger.debug(sheet_id)
+          
+          if(sheet_id){
+            let sheet = await doc.sheetsById[sheet_id]
+            let rows = await sheet.getRows();
+            for (const row of rows) {
+              logger.debug(row.tagname)
+              if (row.tagname == user.tag) {
+                row.address = address
+                await row.save()
+                logger.debug("更新完了")
+                break
+              }
             }
+          }else{
+            logger.debug("マッチするシートなし")
+            return
           }
       }
       else{
@@ -282,7 +302,6 @@ client.on("interactionCreate", async (interaction) => {
       if (interaction.commandName === 'winner') {
         interaction.deferReply({ephemeral: true});
         //user.idを含むシート情報を収集
-        let winner_pj =[]
         const user = client.users.cache.get(interaction.user.id);
         
         //キャッシュクリア
@@ -291,6 +310,7 @@ client.on("interactionCreate", async (interaction) => {
         await doc.loadInfo();
         
         //自身のtagnameが記載されたシート名を取得
+        let winner_pj =[]
         await Promise.all( Object.keys(doc._rawSheets).map(async (key) => {
           let sheet = doc.sheetsById[key]
           await sheet.getRows({limit:50}).then(async (rows)=>{
