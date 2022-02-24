@@ -66,8 +66,6 @@ client.once("ready", async () => {
   }];
   await client.application.commands.set(data, process.env.DISCORD_GUILD_ID);
 
-  //const gsheet_command_id = '945927942477869096' 
-    
   //gsheetコマンドを許可するロール
   const gsheet_role = ['admin','Mod','SuperMod'] 
 
@@ -374,18 +372,16 @@ client.on("interactionCreate", async (interaction) => {
           }))
           your_command.then(command_list => {
             let mas = "おめでとう！"
-            if(command_list.length > 1){
-              mas += `${command_list.length}個当たってるわ。\n提出方法は <#${process.env.DISCORD_GIVEAWAY_CHANNEL_ID}> をよく見といて！\n\n` 
-              mas += `アドレス提出が必要な場合は、下のコピペしてアドレスのところ書いて送信しといてー\n1行ずつ送ってな！\n\nDiscord IDのみ必要な場合は何もする必要ないから、相手のサーバーでロールつくの待っといてな！\n`
-            }else{
-              mas += `下のコピペしてアドレスのところ書いて送信しといてー\n` 
-            }
+            mas += `${command_list.length}個当たってるわ。\n提出方法は <#${process.env.DISCORD_GIVEAWAY_CHANNEL_ID}> をよく見といて！\n\n` 
+            mas += `アドレス提出が必要な場合は、下のコピペしてアドレスのところ書いて送信しといてー\n1行ずつ送ってな！\n\n`
             mas += command_list.join("")
+            mas += `\nDiscord IDのみ必要な場合は何もする必要ないから、相手のサーバーでロールつくの待っといてな！\n`
             interaction.editReply({
               content:mas,
               ephemeral: true,
             })
           })
+          .catch(e=>{logger.debug(e)})
 //           b.then(async (b)=>{
             
 //             logger.debug(interaction.user.id,interaction.user.tag)
@@ -492,8 +488,8 @@ client.on("interactionCreate", async (interaction) => {
           ephemeral: true
           });
         //logger.debug(interaction)
-        //await 761621197862993938
-	      // const user = await client.users.cache.get('761621197862993938')
+        //await 7616211978629939382
+	      // const user = await client.users.cache.get('7616211978629939382')
 	      // user.send('メッセージだよ').then(r=>{logger.debug(r)}).catch(e=>{logger.debug(e)})
       }
       
