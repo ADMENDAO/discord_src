@@ -67,7 +67,7 @@ client.once("ready", async () => {
   await client.application.commands.set(data, process.env.DISCORD_GUILD_ID);
 
   //gsheetコマンドを許可するロール
-  const gsheet_role = ['admin','Mod','SuperMod'] 
+  const gsheet_role = ['Admin','Mod','SuperMod'] 
 
   //サーバー(ギルド)
   const guild = await client.guilds.cache.get(process.env.DISCORD_GUILD_ID)
@@ -84,10 +84,15 @@ client.once("ready", async () => {
     //return slashCommand.name == 'gsheet'
     if(slashCommand.name == 'gsheet'){
       await roleList.forEach(async role => {
+        //logger.debug(role.name)
         if(gsheet_role.includes(role.name)){
          //logger.debug(role.name, role.id)
           await slashCommand.permissions.add({ permissions:
             [{
+              id: process.env.DISCORD_GUILD_ID, //everyone
+              type: 'ROLE',
+              permission: false
+            },{
               id: role.id,
               type: 'ROLE',
               permission: true
