@@ -71,22 +71,20 @@ client.once("ready", async () => {
 
   //サーバー(ギルド)
   const guild = await client.guilds.cache.get(process.env.DISCORD_GUILD_ID)
-
   //ロールリスト
   const roleList = await guild.roles.fetch();
-
   //スラッシュコマンドリスト
   const commandsList = await guild.commands.fetch();
-
+  
   //gsheetコマンドのロール制限
   await commandsList.forEach(async slashCommand => {
-    //console.log(`Command id ${slashCommand.id} / ${slashCommand.name}`)
+    logger.debug(`Command id ${slashCommand.id} / ${slashCommand.name}`)
     //return slashCommand.name == 'gsheet'
     if(slashCommand.name == 'gsheet'){
       await roleList.forEach(async role => {
         //logger.debug(role.name)
         if(gsheet_role.includes(role.name)){
-         //logger.debug(role.name, role.id)
+         logger.debug(role.name, role.id)
           await slashCommand.permissions.add({ permissions:
             [{
               id: process.env.DISCORD_GUILD_ID, //everyone
@@ -158,6 +156,18 @@ async function get_sheet_id(pj_name){
   return id
 }
 
+async function words_adjust(str) {
+  //全角を半角に
+  let word = await str.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) {
+      return String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+  })
+  //記号の削除
+  word = await word.replace(/[:/.,|^~=(){}\[\]'`@¥#$%&"!*+-]/g, "")
+  //スペースの削除
+  word = await word.replace(/\s+/g,"")
+  //logger.log(word)
+  return word
+}
 // //セル検索
 // async function select(sheet_name, callBack) {
 //   const work_sheet = doc.sheetsByTitle[sheet_name];
@@ -216,14 +226,14 @@ client.on("messageCreate", async (message) => {
           })
           let pj_name = (async function() {
             let words = message.content.match(pj_regexp)
-            // logger.debug(message.content)
-            // logger.debug(winner)
-            // logger.debug(words)
-            // logger.debug(words.slice(-1)[0])
+            //logger.debug(message.content)
+            //logger.debug(winner)
+            //logger.debug(words)
+            //logger.debug(words.slice(-1)[0])
             words = words.slice(-1)[0]
             //万が一PJ名にスペースが含まれていたら削除する
-            words = words.replace(/\s+/g,"")
-            logger.debug(words)
+            words = await words_adjust(words)
+            //logger.debug(words)
             return words;
           }());
           
@@ -261,7 +271,12 @@ client.on("messageCreate", async (message) => {
             pj_name = pj_name + words[i];
           }
           //logger.debug(words)
-          //logger.debug(pj_name)
+          //logger.debug('before: ' + pj_name)
+          
+          //pj_nameの正規化
+          pj_name = await words_adjust(pj_name)
+          //logger.debug('after: ' + pj_name)
+          
           if(pj_name !== ''){
             await insert_sheet(pj_name).catch(e=>{logger.debug(e)})
           }
@@ -276,7 +291,7 @@ client.on("messageCreate", async (message) => {
           let pj_name = message.content.match(pj_regexp)
           //logger.debug(pj_name[1])
           pj_name[1].replace('`','')
-          //logger.debug(pj_name[1]) //マッチしたPJ名
+          pj_name[1] = await words_adjust(pj_name[1])
           if(pj_name[1] !== ''){
             await insert_sheet(pj_name[1]).catch(e=>{logger.debug(e)})
           }
@@ -288,7 +303,7 @@ client.on("messageCreate", async (message) => {
           message.content = message.content.replace(/\s+/g," ")
           message.content = message.content.replace(/[{}]/g,"")
           let words = message.content.split(' ')
-          logger.debug(words)
+          //logger.debug(words)
           let address = words[1]
           let pj_name = words[2]
           
@@ -492,6 +507,53 @@ client.on("interactionCreate", async (interaction) => {
           content: "ぷー",
           ephemeral: true
           });
+        
+        //サーバー(ギルド)
+        const guild = await client.guilds.cache.get(process.env.DISCORD_GUILD_ID)
+        
+        const parent_channel = await guild.channels.fetch(process.env.DISCORD_PARENT_WL_CHANNEL_ID).catch(c=>{logger.debug(c)})
+        //const support = message.guild.roles.find(r => r.name === 'Support Team');
+        //logger.debug(guild.members.cache)
+        //let users = await guild.members.cache.find(m => m.user.username === 'anone')
+        let users1 = await guild.members.cache.find(m => m.user.username === 'tsubasa')
+        
+        logger.debug(users1)
+        guild.channels.create('カテゴリー',{
+          type: 'category',
+        })
+//         guild.channels.create('チャンネル名',{
+//           type: 'text',
+//           parent: parent_channel,
+//           // permissionOverwrites: [
+//           //   {
+//           //     id: guild.id,
+//           //     deny: ['VIEW_CHANNEL', 'SEND_MESSAGES'],
+//           //   },
+//           //   {
+//           //     id: users,
+//           //     allow: ['VIEW_CHANNEL'],
+//           //   },
+//           // ],
+//           //permissionOverwrites:parent_channel.permissionOverwrites.fetch()
+//         })
+//           .then(async (channel) => {
+          
+//             let permissions = await parent_channel.permissionOverwrites.cache
+
+//             logger.debug(permissions)
+            
+//               channel.permissionOverwrites.set(permissions)
+// //           channel.overwritePermissions([
+// //             {
+// //               id: '761621197862993938',
+// //               allow: ['VIEW_CHANNEL'],
+// //             },
+// //             {
+// //               id: guild.id,
+// //               deny: ['VIEW_CHANNEL'],
+// //             },
+// //           ]);
+//          });
         //logger.debug(interaction)
         //await 7616211978629939382
 	      // const user = await client.users.cache.get('7616211978629939382')
