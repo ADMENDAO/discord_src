@@ -79,12 +79,14 @@ client.once("ready", async () => {
   //gsheetコマンドのロール制限
   await commandsList.forEach(async slashCommand => {
     logger.debug(`Command id ${slashCommand.id} / ${slashCommand.name}`)
+
     //return slashCommand.name == 'gsheet'
     if(slashCommand.name == 'gsheet'){
       await roleList.forEach(async role => {
         //logger.debug(role.name)
         if(gsheet_role.includes(role.name)){
          logger.debug(role.name, role.id)
+
           await slashCommand.permissions.add({ permissions:
             [{
               id: process.env.DISCORD_GUILD_ID, //everyone
@@ -498,6 +500,7 @@ client.on("interactionCreate", async (interaction) => {
           content: "なんも当たってないわ。ランブルとかビンゴは提供者にDMしてや",
           ephemeral: true
           })
+
         }
       }
       if(interaction.commandName === 'gsheet'){
@@ -515,9 +518,8 @@ client.on("interactionCreate", async (interaction) => {
         //const support = message.guild.roles.find(r => r.name === 'Support Team');
         //logger.debug(guild.members.cache)
         //let users = await guild.members.cache.find(m => m.user.username === 'anone')
-        let users1 = await guild.members.cache.find(m => m.user.username === 'tsubasa')
-        
-        logger.debug(users1)
+       
+        //logger.debug(users1)
         guild.channels.create('カテゴリー',{
           type: 'category',
         })
@@ -554,6 +556,7 @@ client.on("interactionCreate", async (interaction) => {
 // //             },
 // //           ]);
 //          });
+
         //logger.debug(interaction)
         //await 7616211978629939382
 	      // const user = await client.users.cache.get('7616211978629939382')
