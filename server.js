@@ -49,10 +49,21 @@ fastify.register(require("point-of-view"), {
   },
 });
 
-const { Client, Constants, Intents, TextChannel, MessageCollector, MessageActionRow, MessageSelectMenu, MessageButton, MessageEmbed } = require("discord.js");
+const { Client, GatewayIntentBits, Partials, Constants, Intents, TextChannel, MessageCollector, MessageActionRow, MessageSelectMenu, MessageButton, MessageEmbed } = require("discord.js");
+
+// const client = new Client({
+//   intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
+// });
 
 const client = new Client({
-  intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
+  intents: [
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildBans,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+  partials: [Partials.Channel],
 });
 
 client.once("ready", async () => {
@@ -64,44 +75,44 @@ client.once("ready", async () => {
       name: "gsheet",
       description: "ギブアウェイシート一覧(管理者専用)",
   }];
-  await client.application.commands.set(data, process.env.DISCORD_GUILD_ID);
+//   await client.application.commands.set(data, process.env.DISCORD_GUILD_ID);
 
-  //gsheetコマンドを許可するロール
-  const gsheet_role = ['Admin','Mod','SuperMod'] 
+//   //gsheetコマンドを許可するロール
+//   const gsheet_role = ['Admin','Mod','SuperMod'] 
 
-  //サーバー(ギルド)
-  const guild = await client.guilds.cache.get(process.env.DISCORD_GUILD_ID)
-  //ロールリスト
-  const roleList = await guild.roles.fetch();
-  //スラッシュコマンドリスト
-  const commandsList = await guild.commands.fetch();
+//   //サーバー(ギルド)
+//   const guild = await client.guilds.cache.get(process.env.DISCORD_GUILD_ID)
+//   //ロールリスト
+//   const roleList = await guild.roles.fetch();
+//   //スラッシュコマンドリスト
+//   const commandsList = await guild.commands.fetch();
   
   //gsheetコマンドのロール制限
-  await commandsList.forEach(async slashCommand => {
-    logger.debug(`Command id ${slashCommand.id} / ${slashCommand.name}`)
+//   await commandsList.forEach(async slashCommand => {
+//     logger.debug(`Command id ${slashCommand.id} / ${slashCommand.name}`)
 
-    //return slashCommand.name == 'gsheet'
-    if(slashCommand.name == 'gsheet'){
-      await roleList.forEach(async role => {
-        //logger.debug(role.name)
-        if(gsheet_role.includes(role.name)){
-         logger.debug(role.name, role.id)
+//     //return slashCommand.name == 'gsheet'
+//     if(slashCommand.name == 'gsheet'){
+//       await roleList.forEach(async role => {
+//         //logger.debug(role.name)
+//         if(gsheet_role.includes(role.name)){
+//          logger.debug(role.name, role.id)
 
-          await slashCommand.permissions.add({ permissions:
-            [{
-              id: process.env.DISCORD_GUILD_ID, //everyone
-              type: 'ROLE',
-              permission: false
-            },{
-              id: role.id,
-              type: 'ROLE',
-              permission: true
-            }] 
-          })
-        }
-      })
-    }
-  });
+//           await slashCommand.permissions.add({ permissions:
+//             [{
+//               id: process.env.DISCORD_GUILD_ID, //everyone
+//               type: 'ROLE',
+//               permission: false
+//             },{
+//               id: role.id,
+//               type: 'ROLE',
+//               permission: true
+//             }] 
+//           })
+//         }
+//       })
+//     }
+//   });
 
   console.log("Ready!")
 })
@@ -221,17 +232,17 @@ client.on("messageCreate", async (message) => {
           let pj_regexp = /You won the \*\*(.*)\*\*!$/;
           //logger.debug('Congratulations <@123>, <@456>, <@789>'.match(winner_regexp))
           let winner = await message.content.match(winner_regexp)
-          //logger.debug(winner)
+          logger.debug(winner)
           winner = winner.map(id=>{
             //logger.log(id.replace('<@','').replace('>',''))
             return id.replace('<@','').replace('>','')
           })
           let pj_name = (async function() {
             let words = message.content.match(pj_regexp)
-            //logger.debug(message.content)
-            //logger.debug(winner)
-            //logger.debug(words)
-            //logger.debug(words.slice(-1)[0])
+            // logger.debug(message.content)
+            // logger.debug(winner)
+            // logger.debug(words)
+            // logger.debug(words.slice(-1)[0])
             words = words.slice(-1)[0]
             //万が一PJ名にスペースが含まれていたら削除する
             words = await words_adjust(words)
@@ -239,7 +250,12 @@ client.on("messageCreate", async (message) => {
             return words;
           }());
           
+          
           pj_name.then(async (pj)=>{
+            
+            //pj_nameのワークシート作成
+            await insert_sheet(pj).catch(e=>{logger.debug(e)})
+
             if(winner.length){
               //winnerのIDからtagnameを抽出してインサートデータ作成
               let insert_data = await Promise.all(winner.map(user_id=>{
@@ -265,38 +281,38 @@ client.on("messageCreate", async (message) => {
           
 
         //!gstartでギブアウェイ設定時(ワークシート作成)
-        }else if(message.content.startsWith('!gstart') && !message.author.bot){
-          let words = message.content.split(' ')
-          //logger.debug(words)
-          let pj_name = ""
-          for (let i = 3; i < words.length; i++) {
-            pj_name = pj_name + words[i];
-          }
-          //logger.debug(words)
-          //logger.debug('before: ' + pj_name)
+//         }else if(message.content.startsWith('!gstart') && !message.author.bot){
+//           let words = message.content.split(' ')
+//           //logger.debug(words)
+//           let pj_name = ""
+//           for (let i = 3; i < words.length; i++) {
+//             pj_name = pj_name + words[i];
+//           }
+//           //logger.debug(words)
+//           //logger.debug('before: ' + pj_name)
           
-          //pj_nameの正規化
-          pj_name = await words_adjust(pj_name)
-          //logger.debug('after: ' + pj_name)
+//           //pj_nameの正規化
+//           pj_name = await words_adjust(pj_name)
+//           //logger.debug('after: ' + pj_name)
           
-          if(pj_name !== ''){
-            await insert_sheet(pj_name).catch(e=>{logger.debug(e)})
-          }
-        //!gcreateでギブアウェイ設定時(ワークシート作成)
-        }else if(giveaway.test(message.content) && message.author.bot){
-          //logger.debug('messageCreate', message.content)
+//           if(pj_name !== ''){
+//             await insert_sheet(pj_name).catch(e=>{logger.debug(e)})
+//           }
+//         //!gcreateでギブアウェイ設定時(ワークシート作成)
+//         }else if(giveaway.test(message.content) && message.author.bot){
+//           //logger.debug('messageCreate', message.content)
 
-          //logger.debug(message.author.id)
-          message.content = message.content.replace(/\s+/g,"")
-          //logger.debug(message.content)
-          let pj_regexp = /`(.*)`/;
-          let pj_name = message.content.match(pj_regexp)
-          //logger.debug(pj_name[1])
-          pj_name[1].replace('`','')
-          pj_name[1] = await words_adjust(pj_name[1])
-          if(pj_name[1] !== ''){
-            await insert_sheet(pj_name[1]).catch(e=>{logger.debug(e)})
-          }
+//           //logger.debug(message.author.id)
+//           message.content = message.content.replace(/\s+/g,"")
+//           //logger.debug(message.content)
+//           let pj_regexp = /`(.*)`/;
+//           let pj_name = message.content.match(pj_regexp)
+//           //logger.debug(pj_name[1])
+//           pj_name[1].replace('`','')
+//           pj_name[1] = await words_adjust(pj_name[1])
+//           if(pj_name[1] !== ''){
+//             await insert_sheet(pj_name[1]).catch(e=>{logger.debug(e)})
+//           }
         //!whitelist コマンド実行時にシートに記録
         }else if(message.content.startsWith('!whitelist ') && !message.author.bot){
           const user = client.users.cache.get(message.author.id);
