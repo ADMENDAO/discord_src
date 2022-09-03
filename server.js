@@ -336,7 +336,7 @@ client.on("messageCreate", async (message) => {
               if (row.tagname == user.tag) {
                 row.address = address
                 await row.save()
-                logger.debug("更新完了")
+                logger.debug("書き込み完了")
               }
             }
           }else{
@@ -407,7 +407,7 @@ client.on("interactionCreate", async (interaction) => {
           //     .setLabel(pj)
           // }))
           let your_command = Promise.all(await winner_pj.map((pj, key) => {
-              return "`!whitelist ここにアドレス "+pj+"`\n"
+              return "`/whitelist ここにアドレス "+pj+"`\n"
           }))
           your_command.then(command_list => {
             let mas = "おめでとう！"
@@ -475,7 +475,7 @@ client.on("interactionCreate", async (interaction) => {
 //                     //try {
 //                       logger.debug('then 2')
 //                       await i.update({
-//                       content: "そしたら下のコピペしてアドレス書いて送信やで\n\n" + "`!whitelist ここにアドレス "+response[1] + "`\n\n",
+//                       content: "そしたら下のコピペしてアドレス書いて送信やで\n\n" + "`/whitelist ここにアドレス "+response[1] + "`\n\n",
 //                       components: [],
 //                       ephemeral: true
 //                       })
