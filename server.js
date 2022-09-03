@@ -314,7 +314,7 @@ client.on("messageCreate", async (message) => {
 //             await insert_sheet(pj_name[1]).catch(e=>{logger.debug(e)})
 //           }
         //!whitelist コマンド実行時にシートに記録
-        }else if(message.content.startsWith('!whitelist ') && !message.author.bot){
+        }else if((message.content.startsWith('!whitelist ') || message.content.startsWith('/whitelist ') )&& !message.author.bot){
           const user = client.users.cache.get(message.author.id);
           //logger.debug(user.tag)
           //スペースを半角スペースに統一
@@ -337,13 +337,14 @@ client.on("messageCreate", async (message) => {
                 row.address = address
                 await row.save()
                 logger.debug("更新完了")
-                break
               }
             }
           }else{
             logger.debug("マッチするシートなし")
             return
           }
+          message.delete()
+          return
       }
       else{
         return
