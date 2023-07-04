@@ -49,7 +49,7 @@ fastify.register(require("point-of-view"), {
   },
 });
 
-const { Client, GatewayIntentBits, Partials, Constants, Intents, TextChannel, MessageCollector, MessageActionRow, MessageSelectMenu, MessageButton, MessageEmbed } = require("discord.js");
+const { Client, GatewayIntentBits, Partials, MessageCollector, MessageActionRow, MessageSelectMenu, MessageButton, MessageEmbed } = require("discord.js");
 
 // const client = new Client({
 //   intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
@@ -70,7 +70,7 @@ client.once("ready", async () => {
     
   const data = [{
       name: "winner",
-      description: "なんか当たったんか？おめでとうな！",
+      description: "ふぉっふぉっふぉっ、なんか当たったんじゃな？",
   },{
       name: "gsheet",
       description: "ギブアウェイシート一覧(管理者専用)",
@@ -140,11 +140,13 @@ async function get_sheet_titles(){
 
 //シート作成
 async function insert_sheet(pj_name){
-  let wl_header = {col1:'tagname', col2:'address'};
+  let wl_header = {col1:'tagname', col2:'username', col3:'address'};
   //logger.debug(pj_name)
   //logger.debug(pj_name.toLowerCase())
   let sheet_titles = await get_sheet_titles()
-  //logger.debug(sheet_titles,!sheet_titles.includes(pj_name))
+  
+  logger.debug(sheet_titles,!sheet_titles.includes(pj_name))
+  
   if (!sheet_titles.includes(pj_name)) {
     await doc.addSheet({title:pj_name, headerValues:wl_header, index:0})
     .then(e=>{ logger.debug('create sheet ' + e.title)})
@@ -261,10 +263,10 @@ client.on("messageCreate", async (message) => {
               let insert_data = await Promise.all(winner.map(user_id=>{
                 let user = client.users.cache.get(user_id);
                 if (user) {
-                  //logger.debug(user)
-                  return [user.tag] 
+                  logger.debug(user)
+                  return [user.tag, user.username] 
                 } else {
-                  return ['error:unknown_name']
+                  return ['error:tag_name','error:unknown_username']
                 };
               }))
               //logger.log(insert_data, pj)
@@ -316,7 +318,8 @@ client.on("messageCreate", async (message) => {
         //!whitelist コマンド実行時にシートに記録
         }else if((message.content.startsWith('!whitelist ') || message.content.startsWith('/whitelist ') )&& !message.author.bot){
           const user = client.users.cache.get(message.author.id);
-          //logger.debug(user.tag)
+          logger.debug(user)
+          logger.debug(user.tag)
           //スペースを半角スペースに統一
           message.content = message.content.replace(/\s+/g," ")
           message.content = message.content.replace(/[{}]/g,"")
@@ -363,9 +366,15 @@ client.on("interactionCreate", async (interaction) => {
     if(interaction.guild.id == process.env.DISCORD_GUILD_ID){
       //winner コマンド実行
       if (interaction.commandName === 'winner') {
+        //console.log('Hello')
         await interaction.deferReply({ephemeral: true});
+        //console.log('Hello2')
         //user.idを含むシート情報を収集
         const user = client.users.cache.get(interaction.user.id);
+        
+        
+        //console.log(user)
+        
         
         //キャッシュクリア
         doc.resetLocalCache()
@@ -380,9 +389,9 @@ client.on("interactionCreate", async (interaction) => {
             //return {...sheet._rawProperties, subElements: element.subElements.filter((subElement) => subElement.surname === 1)}
             
             for (const row of rows) {
-              //logger.debug(row.tagname, user.tag)
+              logger.debug(row.tagname, user.tag)
               if (row.tagname == user.tag && row.address == undefined ) {
-                //logger.debug(sheet.title)
+                logger.debug(sheet.title)
                 winner_pj.push(sheet.title)
               }
             }
@@ -410,11 +419,11 @@ client.on("interactionCreate", async (interaction) => {
               return "`/whitelist ここにアドレス "+pj+"`\n"
           }))
           your_command.then(command_list => {
-            let mas = "おめでとう！"
-            mas += `${command_list.length}個当たってるわ。\n提出方法は <#${process.env.DISCORD_GIVEAWAY_CHANNEL_ID}> をよく見といて！\n\n` 
-            mas += `アドレス提出が必要な場合は、下のコピペしてアドレスのところ書いて送信しといてー\n1行ずつ送ってな！\n\n`
+            let mas = "ラッキーなやつじゃ！"
+            mas += `${command_list.length}個当たってるわい。\n提出方法は <#${process.env.DISCORD_GIVEAWAY_CHANNEL_ID}> をよく見るんだぞ。\n\n` 
+            mas += `アドレスの提出が必要な時は、下の文字をコピペして、アドレスのところに自分のアドレスを書いて送信するんじゃ。\n1行ずつじゃぞ！\n\n`
             mas += command_list.join("")
-            mas += `\nDiscord IDのみ必要な場合は何もする必要ないから、相手のサーバーでロールつくの待っといてな！\n`
+            mas += `\nDiscord IDのみ必要な場合は何もする必要はない。相手のサーバーでロールがつくのを待つんじゃ\n`
             interaction.editReply({
               content:mas,
               ephemeral: true,
@@ -514,7 +523,7 @@ client.on("interactionCreate", async (interaction) => {
         // logger.debug('after Button.')
         }else{  
           await interaction.editReply({
-          content: "なんも当たってないわ。ランブルとかビンゴは提供者にDMしてや",
+          content: "なーんも当たってないぞ。ランブルとかビンゴは提供者にDMするんじゃ",
           ephemeral: true
           })
 
